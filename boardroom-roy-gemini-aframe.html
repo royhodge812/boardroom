@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Boardroom | 3D Governance</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #0a0a0c; font-family: 'IBM Plex Mono', monospace; }
+
+        #top-bar {
+            position: absolute; top: 0; left: 0; width: 100%; height: 60px;
+            background: linear-gradient(to bottom, rgba(10,10,12,1), rgba(10,10,12,0));
+            z-index: 100; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 40px; box-sizing: border-box; pointer-events: none;
+        }
+        .hud-item { display: flex; flex-direction: column; pointer-events: auto; }
+        .hud-label { font-size: 9px; letter-spacing: 2px; color: #c8a84b; opacity: 0.7; text-transform: uppercase; }
+        .hud-value { font-size: 14px; font-weight: bold; color: #e8e3d5; }
+
+        #tooltip {
+            position: absolute; display: none; background: rgba(13, 13, 24, 0.95);
+            border: 1px solid #c8a84b; color: #e8e3d5; padding: 15px;
+            font-size: 12px; z-index: 200; pointer-events: none;
+            box-shadow: 0 0 20px rgba(200, 168, 75, 0.3); border-radius: 4px;
+            min-width: 200px; transition: opacity 0.2s;
+        }
+        .tooltip-header { border-bottom: 1px solid #c8a84b; margin-bottom: 8px; padding-bottom: 4px; font-weight: bold; color: #c8a84b; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .stat-label { opacity: 0.6; }
+
+        .controls-hint { position: absolute; bottom: 30px; right: 30px; color: #5a5572; font-size: 11px; text-align: right; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <div class="hud-item">
+            <span class="hud-label">Governance Protocol</span>
+            <span class="hud-value">Zeroclaw v0.7.4</span>
+        </div>
+        <div class="hud-item" style="text-align: center;">
+            <span class="hud-label">Meeting Type</span>
+            <span class="hud-value">Executive Hybrid Session</span>
+        </div>
+        <div class="hud-item" style="text-align: right;">
+            <span class="hud-label">Local User</span>
+            <span class="hud-value" id="status-text">PRESIDING</span>
+        </div>
+    </div>
+
+    <div id="tooltip">
+        <div class="tooltip-header" id="tt-name">-</div>
+        <div class="stat-row"><span class="stat-label">Identity:</span><span id="tt-type">-</span></div>
+        <div class="stat-row"><span class="stat-label">Compute:</span><span id="tt-model">-</span></div>
+        <div class="stat-row"><span class="stat-label">Usage:</span><span id="tt-tokens">-</span></div>
+        <div class="stat-row"><span class="stat-label">Mood:</span><span id="tt-mood">-</span></div>
+    </div>
+
+    <div class="controls-hint">
+        WASD: Move | Mouse: Look<br>
+        Click Agent: Detailed Stats<br>
+        Scroll/Move: Proximity Reveal
+    </div>
+
+    <a-scene renderer="antialias: true; colorManagement: true;" background="color: #0a0a0c" cursor="rayOrigin: mouse">
+
+        <a-assets>
+            <a-mixin id="glass-panel"
+                     geometry="primitive: plane; width: 1.8; height: 1.5"
+                     material="color: #0d0d18; opacity: 0.2; shader: flat; side: double; transparent: true"
+            ></a-mixin>
+
+            <a-mixin id="glow-edge"
+                     geometry="primitive: box; width: 1.82; height: 0.01; depth: 0.005"
+                     material="color: #c8a84b; shader: flat"
+            ></a-mixin>
+
+            <a-mixin id="pip-window"
+                     geometry="primitive: plane; width: 1.6; height: 0.6"
+                     material="color: #000; opacity: 0.6; shader: flat"
+                     position="0 -0.35 0.01"
+            ></a-mixin>
+        </a-assets>
+
+        <!-- Floor and Grid -->
+        <a-plane rotation="-90 0 0" width="100" height="100" color="#0d0d0f" metalness="0.1" roughness="1"></a-plane>
+        <a-grid position="0 0.01 0" rotation="-90 0 0" width="40" height="40" material="color: #c8a84b; opacity: 0.02"></a-grid>
+
+        <!-- AGENDA BILLBOARD -->
+        <a-entity id="agenda-billboard" position="0 5 -15">
+            <a-plane width="16" height="11" color="#050507" material="shader: flat"></a-plane>
+
+            <!-- MASSIVE COUNTDOWN TIMER -->
+            <a-entity id="timer-container" position="0 4.2 0.01">
+                <a-text id="countdown-timer" value="00:00" align="center" width="28" color="#ff3b3b" font="monoid"
+                        animation="property: opacity; from: 1; to: 0.7; dur: 800; dir: alternate; loop: true"></a-text>
+                <a-text value="T-MINUS UNTIL QUORUM OVERRIDE" align="center" width="5" color="#ff3b3b" position="0 -1.2 0" font="mozillavr"></a-text>
+            </a-entity>
+
+            <!-- User Presence / Status Indicator -->
+            <a-entity position="0 -4.5 0.01">
+                <a-plane width="12" height="0.8" color="#c8a84b" material="opacity: 0.1">
+                    <a-text value="PRESIDING OFFICER: YOU" align="center" width="10" color="#fff" position="0 0 0"></a-text>
+                </a-plane>
+            </a-entity>
+
+            <!-- AGENDA TEXT (Left) -->
+            <a-entity position="-7 1.5 0.02">
+                <a-text value="BOARD MEETING AGENDA" align="left" width="11" color="#c8a84b" font="exo2bold"></a-text>
+                <a-text value="I.   CTO FIRST DIRECTIVE: LOGIC RIGOR\nII.  AGENT IDENTITY VERIFICATION\nIII. HYBRID WORKSPACE SCALING\nIV.  JON STOKES & DANE WALTER ONBOARDING\nV.   SENTIMENT ANALYSIS REFINEMENT"
+                        position="0 -2.7 0" align="left" width="10" color="#e8e3d5" font="monoid" line-height="60"></a-text>
+            </a-entity>
+
+            <!-- VOTING / TASK CHECKLIST (Right) -->
+            <a-entity position="2 1.5 0.02">
+                <a-text value="VOTING & TASKS" align="left" width="9" color="#c8a84b" font="exo2bold"></a-text>
+                <a-text value="[ ] QUORUM VERIFICATION\n[ ] IDENTITY AUDIT\n[ ] PROTOCOL v0.7.4 APPROVAL\n[ ] RESOURCE ALLOCATION VOTE\n[ ] ADJOURNMENT"
+                        position="0 -2.7 0" align="left" width="8" color="#5a5572" font="monoid" line-height="60"></a-text>
+            </a-entity>
+        </a-entity>
+
+        <!-- THE COUNCIL ARC -->
+        <a-entity id="council-arc">
+            <!-- DANE WALTER (Human) -->
+            <a-entity class="interactable" data-name="DANE WALTER" data-type="HUMAN" data-model="Biological" data-tokens="N/A" data-mood="Analytical"
+                      position="3.5 1.8 -4.5" rotation="0 -15 0">
+                <a-entity mixin="glass-panel" material="color: #001a22"></a-entity>
+                <a-entity mixin="glow-edge" position="0 0.75 0.01" material="color: #00d4ff"></a-entity>
+                <a-entity mixin="pip-window"><a-text value="CAMERA FEED [OFFLINE]" align="center" width="2" color="#333" position="0 0 0.01"></a-text></a-entity>
+                <a-text value="👤 DANE WALTER" position="-0.75 0.5 0.02" width="5" color="#00d4ff"></a-text>
+                <a-text value="BOARD MEMBER\nStatus: Connected" position="-0.75 0.1 0.02" width="3" color="#fff"></a-text>
+            </a-entity>
+
+            <!-- JON STOKES -->
+            <a-entity class="interactable" data-name="JON STOKES" data-type="HUMAN" data-model="Biological" data-tokens="N/A" data-mood="Strategic"
+                      position="-3.5 1.8 -4.5" rotation="0 15 0">
+                <a-entity mixin="glass-panel" material="color: #001a22"></a-entity>
+                <a-entity mixin="glow-edge" position="0 0.75 0.01" material="color: #00d4ff"></a-entity>
+                <a-entity mixin="pip-window"><a-text value="CAMERA FEED [OFFLINE]" align="center" width="2" color="#333" position="0 0 0.01"></a-text></a-entity>
+                <a-text value="👤 JON STOKES" position="-0.75 0.5 0.02" width="5" color="#00d4ff"></a-text>
+                <a-text value="BOARD MEMBER\nStatus: Pending" position="-0.75 0.1 0.02" width="3" color="#fff"></a-text>
+            </a-entity>
+
+            <!-- FORGE -->
+            <a-entity class="interactable" data-name="FORGE" data-type="AGENT" data-model="GPT-4o" data-tokens="1.2M" data-mood="Productive"
+                      position="6.5 1.8 -6" rotation="0 -35 0">
+                <a-entity mixin="glass-panel"></a-entity>
+                <a-entity mixin="glow-edge" position="0 0.75 0.01"></a-entity>
+                <a-entity mixin="pip-window"><a-text value="AGENT STREAM [READY]" align="center" width="2" color="#c8a84b" position="0 0 0.01"></a-text></a-entity>
+                <a-text value="🛠️ FORGE" position="-0.75 0.5 0.02" width="5" color="#c8a84b"></a-text>
+                <a-text value="CTO [NPC]\nMood: Productive ⚡" position="-0.75 0.1 0.02" width="3" color="#fff"></a-text>
+            </a-entity>
+
+            <!-- SENTINEL -->
+            <a-entity class="interactable" data-name="SENTINEL" data-type="AGENT" data-model="Claude-3.5" data-tokens="450k" data-mood="Vigilant"
+                      position="9 1.8 -8" rotation="0 -55 0">
+                <a-entity mixin="glass-panel"></a-entity>
+                <a-entity mixin="glow-edge" position="0 0.75 0.01"></a-entity>
+                <a-entity mixin="pip-window"><a-text value="AGENT STREAM [READY]" align="center" width="2" color="#c8a84b" position="0 0 0.01"></a-text></a-entity>
+                <a-text value="🛡️ SENTINEL" position="-0.75 0.5 0.02" width="5" color="#c8a84b"></a-text>
+                <a-text value="VERIFICATION [NPC]\nMood: Vigilant 👁️" position="-0.75 0.1 0.02" width="3" color="#fff"></a-text>
+            </a-entity>
+
+            <!-- CIPHER -->
+            <a-entity class="interactable" data-name="CIPHER" data-type="AGENT" data-model="Llama-3" data-tokens="920k" data-mood="Secure"
+                      position="-6.5 1.8 -6" rotation="0 35 0">
+                <a-entity mixin="glass-panel"></a-entity>
+                <a-entity mixin="glow-edge" position="0 0.75 0.01"></a-entity>
+                <a-entity mixin="pip-window"><a-text value="AGENT STREAM [READY]" align="center" width="2" color="#c8a84b" position="0 0 0.01"></a-text></a-entity>
+                <a-text value="🔐 CIPHER" position="-0.75 0.5 0.02" width="5" color="#c8a84b"></a-text>
+                <a-text value="SECURITY [NPC]\nMood: Secure 🔒" position="-0.75 0.1 0.02" width="3" color="#fff"></a-text>
+            </a-entity>
+        </a-entity>
+
+        <a-light type="ambient" color="#111" intensity="0.5"></a-light>
+        <a-light type="point" position="0 10 -8" color="#c8a84b" intensity="0.6" distance="40"></a-light>
+
+        <!-- User Rig -->
+        <a-entity id="rig" position="0 0 5" rotation="0 0 0">
+            <a-camera look-controls wasd-controls="acceleration: 50">
+                <a-cursor color="#c8a84b" scale="0.5 0.5 0.5" fuse="false"></a-cursor>
+            </a-camera>
+        </a-entity>
+
+    </a-scene>
+
+    <script>
+        window.onload = function() {
+            const tooltip = document.getElementById('tooltip');
+            const countdownEl = document.getElementById('countdown-timer');
+            const timerContainer = document.getElementById('timer-container');
+
+            // Meeting Countdown Logic
+            let secondsLeft = 180;
+            function updateTimer() {
+                if (secondsLeft <= 0) {
+                    timerContainer.setAttribute('visible', 'false');
+                    return;
+                }
+                const mins = Math.floor(secondsLeft / 60);
+                const secs = secondsLeft % 60;
+                countdownEl.setAttribute('value', `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
+                secondsLeft--;
+            }
+            setInterval(updateTimer, 1000);
+            updateTimer();
+
+            function showDetails(el) {
+                if (!el) return;
+                document.getElementById('tt-name').textContent = el.getAttribute('data-name') || '-';
+                document.getElementById('tt-type').textContent = el.getAttribute('data-type') || '-';
+                document.getElementById('tt-model').textContent = el.getAttribute('data-model') || '-';
+                document.getElementById('tt-tokens').textContent = el.getAttribute('data-tokens') || '-';
+                document.getElementById('tt-mood').textContent = el.getAttribute('data-mood') || '-';
+
+                tooltip.style.left = (window.innerWidth / 2 + 20) + 'px';
+                tooltip.style.top = (window.innerHeight / 2 + 20) + 'px';
+                tooltip.style.display = 'block';
+            }
+
+            // Interaction Listeners
+            document.querySelectorAll('.interactable').forEach(el => {
+                const panel = el.querySelector('[mixin="glass-panel"]');
+                const glow = el.querySelector('[mixin="glow-edge"]');
+
+                el.addEventListener('click', () => {
+                    showDetails(el);
+                    el.setAttribute('animation', {
+                        property: 'scale',
+                        to: '1.05 1.05 1.05',
+                        dur: 100,
+                        dir: 'alternate',
+                        loop: 1
+                    });
+                });
+
+                el.addEventListener('mouseenter', () => {
+                    if (panel) panel.setAttribute('material', 'opacity', '0.7');
+                    if (glow) glow.setAttribute('material', 'opacity', '1');
+                    showDetails(el);
+                });
+
+                el.addEventListener('mouseleave', () => {
+                    if (panel) panel.setAttribute('material', 'opacity', '0.2');
+                    if (glow) glow.setAttribute('material', 'opacity', '0.4');
+                    tooltip.style.display = 'none';
+                });
+            });
+
+            window.addEventListener('contextmenu', e => e.preventDefault());
+        };
+    </script>
+</body>
+</html>

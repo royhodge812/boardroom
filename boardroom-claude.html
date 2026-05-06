@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Boardroom</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06060b;
+  --surface:#0d0d18;
+  --card:#111120;
+  --card-h:#17172a;
+  --gold:#c8a84b;
+  --gold-glow:rgba(200,168,75,0.2);
+  --gold-dim:rgba(200,168,75,0.12);
+  --gold-b:rgba(200,168,75,0.28);
+  --gold-ba:rgba(200,168,75,0.9);
+  --text:#e8e3d5;
+  --text-m:#5a5572;
+  --text-d:#2e2c40;
+  --cyan:#00d4ff;
+  --green:#22c55e;
+  --red:#ef4444;
+  --amber:#f59e0b;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace}
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+.app{position:relative;z-index:1;display:grid;grid-template-rows:58px 1fr 72px;height:100vh;width:100vw}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:0 28px;border-bottom:1px solid var(--gold-b);background:rgba(6,6,11,0.94);backdrop-filter:blur(10px)}
+.hdr-left{display:flex;flex-direction:column;gap:2px}
+.hdr-title{font-family:'Cinzel',serif;font-size:18px;font-weight:900;letter-spacing:.3em;color:var(--gold);text-shadow:0 0 24px rgba(200,168,75,.5)}
+.hdr-sub{font-size:8px;letter-spacing:.35em;color:var(--text-m);text-transform:uppercase}
+.hdr-sub em{color:rgba(200,168,75,.5);font-style:italic}
+.hdr-right{display:flex;align-items:center;gap:20px;font-size:10px;color:var(--text-m);letter-spacing:.1em}
+.sess-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2.4s infinite}
+@keyframes blink{0%,100%{opacity:1;box-shadow:0 0 8px var(--green)}50%{opacity:.4;box-shadow:none}}
+.hdr-stat{display:flex;align-items:center;gap:7px}
+
+/* TABLE AREA */
+.tbl-area{position:relative;overflow:hidden}
+#pc{position:absolute;inset:0;pointer-events:none;z-index:1}
+.oval-tbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(ellipse at 38% 30%,rgba(200,168,75,.05) 0%,transparent 55%),
+             radial-gradient(ellipse at center,#131008 0%,#0a0905 50%,#060503 100%);
+  border:1px solid rgba(200,168,75,.22);
+  box-shadow:0 0 100px rgba(200,168,75,.06),0 0 30px rgba(200,168,75,.04),
+             inset 0 1px 0 rgba(200,168,75,.12),inset 0 0 80px rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;z-index:2}
+.tbl-mark{font-family:'Cinzel',serif;letter-spacing:.7em;color:rgba(200,168,75,.07);user-select:none;text-indent:.7em}
+.agents-wrap{position:absolute;inset:0;z-index:3}
+
+/* CARDS */
+.acard{position:absolute;transform:translate(-50%,-50%);cursor:pointer;
+  background:var(--card);border:1px solid var(--gold-b);border-radius:8px;
+  padding:11px 13px 10px;transition:all .3s cubic-bezier(.34,1.56,.64,1);width:168px}
+.acard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:8px 8px 0 0;background:var(--agent-color,var(--gold));opacity:.6;transition:opacity .3s}
+.acard:hover{background:var(--card-h);border-color:rgba(200,168,75,.6);transform:translate(-50%,-50%) scale(1.07);z-index:10;box-shadow:0 8px 32px rgba(0,0,0,.55),0 0 20px var(--gold-glow)}
+.acard:hover::before{opacity:1}
+.acard.human{border-color:var(--gold-ba);background:rgba(200,168,75,.07);box-shadow:0 0 30px rgba(200,168,75,.14)}
+.acard.human::before{opacity:1;background:var(--gold)}
+.acard.focused{z-index:20;transform:translate(-50%,-50%) scale(1.13);box-shadow:0 14px 44px rgba(0,0,0,.7),0 0 28px rgba(200,168,75,.22);border-color:var(--gold-ba)}
+.acard.convening{animation:card-convene .5s ease}
+@keyframes card-convene{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.04)}}
+
+.c-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.c-name{font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.1em}
+.c-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;transition:background .4s,box-shadow .4s}
+.c-title{font-size:7.5px;color:var(--text-m);letter-spacing:.04em;text-transform:uppercase;margin-bottom:9px;line-height:1.4}
+
+.c-sent{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0 6px}
+.c-emoji{font-size:26px;line-height:1;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.c-emoji.pop{animation:epop .38s ease}
+@keyframes epop{0%{transform:scale(1)}45%{transform:scale(1.45)}100%{transform:scale(1)}}
+.c-slabel{font-size:7px;letter-spacing:.22em;text-transform:uppercase;font-weight:500;transition:color .4s}
+
+.c-bar{margin-top:7px;height:2px;border-radius:2px;background:rgba(255,255,255,.05)}
+.c-bar-fill{height:100%;border-radius:2px;transition:width .6s ease,background-color .6s ease}
+
+/* FOOTER */
+.ftr{display:flex;align-items:center;gap:14px;padding:0 28px;border-top:1px solid var(--gold-b);background:rgba(6,6,11,.96);backdrop-filter:blur(10px)}
+.addr-lbl{font-size:10px;color:var(--gold);letter-spacing:.18em;white-space:nowrap;opacity:.75;flex-shrink:0}
+.addr-in{flex:1;background:transparent;border:none;outline:none;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text);caret-color:var(--gold)}
+.addr-in::placeholder{color:var(--text-d)}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;padding:7px 14px;border-radius:4px;cursor:pointer;border:1px solid;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.btn-send{border-color:rgba(0,212,255,.35);color:var(--cyan);background:rgba(0,212,255,.06)}
+.btn-send:hover{background:rgba(0,212,255,.15);box-shadow:0 0 12px rgba(0,212,255,.2)}
+.btn-cnv{border-color:var(--gold-b);color:var(--gold);background:var(--gold-dim)}
+.btn-cnv:hover{background:rgba(200,168,75,.18);box-shadow:0 0 14px var(--gold-glow)}
+.btn-cnv:disabled{opacity:.45;cursor:not-allowed}
+.ftr-count{font-size:9px;color:var(--text-m);letter-spacing:.1em;white-space:nowrap;flex-shrink:0}
+::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="app">
+
+  <header class="hdr">
+    <div class="hdr-left">
+      <div class="hdr-title">THE BOARDROOM</div>
+      <div class="hdr-sub">powered by <em>agentic</em> intelligence · zeroclaw stack</div>
+    </div>
+    <div class="hdr-right">
+      <div class="hdr-stat"><div class="sess-dot"></div><span id="sess-lbl">SESSION ACTIVE</span></div>
+      <span id="clock-el">--:--:--</span>
+      <span id="next-report">NEXT REPORT: 08:00</span>
+    </div>
+  </header>
+
+  <main class="tbl-area" id="tbl-area">
+    <canvas id="pc"></canvas>
+    <div class="oval-tbl" id="oval-tbl">
+      <div class="tbl-mark" style="font-size:11px">THE BOARDROOM</div>
+    </div>
+    <div class="agents-wrap" id="agents-wrap"></div>
+  </main>
+
+  <footer class="ftr">
+    <span class="addr-lbl">ADDRESS ▸</span>
+    <input class="addr-in" id="addr-in" placeholder="speak to the board..." autocomplete="off" spellcheck="false">
+    <button class="btn btn-send" id="btn-send">SEND</button>
+    <button class="btn btn-cnv" id="btn-cnv">CONVENE SESSION</button>
+    <span class="ftr-count" id="ftr-count">12 MEMBERS PRESENT</span>
+  </footer>
+
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const AGENTS = [
+  { id:'roy',      name:'ROY',      title:'Chairman · Human in the Loop',   isHuman:true,  color:'#c8a84b',
+    kw:{p:[],n:[]} },
+  { id:'axiom',    name:'AXIOM',    title:'Chief Operating Officer',                        color:'#00d4ff',
+    kw:{p:['complete','shipped','on-track','workflow','done','deployed','running','ready'],
+        n:['blocked','delayed','overdue','failed','stuck','broken','halt']} },
+  { id:'ledger',   name:'LEDGER',   title:'Chief Financial Officer',                        color:'#f59e0b',
+    kw:{p:['profit','gain','doge','mining','growth','revenue','earned','green'],
+        n:['loss','drop','deficit','spend','decline','burn','debt','red']} },
+  { id:'cipher',   name:'CIPHER',   title:'Chief Security Officer',                         color:'#a78bfa',
+    kw:{p:['secure','patched','encrypted','hardened','clean','verified','safe'],
+        n:['breach','cve','threat','vulnerability','leak','critical','exploit','exposed']} },
+  { id:'oracle',   name:'ORACLE',   title:'Chief Research Officer',                         color:'#06b6d4',
+    kw:{p:['discovered','insight','pattern','analyzed','found','research','confirmed'],
+        n:['unknown','unclear','gap','missing','outdated','failed','void']} },
+  { id:'echo',     name:'ECHO',     title:'Chief of Staff',                                 color:'#34d399',
+    kw:{p:['recalled','synced','context','remembered','aligned','ready','clear'],
+        n:['forgotten','drift','conflict','missing','lost','stale','broken']} },
+  { id:'forge',    name:'FORGE',    title:'Chief Technology Officer',                       color:'#f97316',
+    kw:{p:['compiled','deployed','optimized','stable','fixed','built','shipped'],
+        n:['crash','bug','broken','failed','slow','error','timeout','panic']} },
+  { id:'prism',    name:'PRISM',    title:'Communications Director',                        color:'#e879f9',
+    kw:{p:['published','created','clear','content','ready','sent','live'],
+        n:['unclear','delayed','revision','rejected','noise','pending','draft']} },
+  { id:'lens',     name:'LENS',     title:'Analytics Director',                             color:'#38bdf8',
+    kw:{p:['trend','baseline','normal','optimized','clean','report','accurate'],
+        n:['anomaly','spike','outlier','error','flat','invalid','missing']} },
+  { id:'sentinel', name:'SENTINEL', title:'Verification Officer',                           color:'#4ade80',
+    kw:{p:['verified','confirmed','validated','clean','accurate','passed','trusted'],
+        n:['flagged','conflict','contradiction','unverified','false','failed','suspect']} },
+  { id:'atlas',    name:'ATLAS',    title:'Strategic Advisor',                              color:'#94a3b8',
+    kw:{p:['solved','breakthrough','solution','clear','strategic','progress','forward'],
+        n:['stuck','constraint','impossible','blocked','complex','stalled','unknown']} },
+  { id:'herald',   name:'HERALD',   title:'Interface Officer',                              color:'#fb923c',
+    kw:{p:['engaged','clear','understood','responsive','active','live','ready'],
+        n:['idle','confused','misunderstood','timeout','offline','silent','lost']} },
+];
+
+const STATES = {
+  OPTIMISTIC: { emoji:'😊', label:'OPTIMISTIC', color:'#22c55e' },
+  NOMINAL:    { emoji:'😐', label:'NOMINAL',    color:'#3b82f6' },
+  PROCESSING: { emoji:'🤔', label:'PROCESSING', color:'#8b5cf6' },
+  ALERT:      { emoji:'😤', label:'ALERT',      color:'#f59e0b' },
+  CRITICAL:   { emoji:'😟', label:'CRITICAL',   color:'#ef4444' },
+  IDLE:       { emoji:'😴', label:'IDLE',       color:'#3a3650' },
+  PRESIDING:  { emoji:'🎯', label:'PRESIDING',  color:'#c8a84b' },
+  WAITING:    { emoji:'👁',  label:'MONITORING', color:'#c8a84b' },
+};
+
+const agSt = {};
+AGENTS.forEach(a => { agSt[a.id] = { state:'NOMINAL', score:.5 }; });
+
+// ── DOM BUILD ─────────────────────────────────────────────────────────────────
+const tblArea   = document.getElementById('tbl-area');
+const agWrap    = document.getElementById('agents-wrap');
+const ovalTbl   = document.getElementById('oval-tbl');
+const pCanvas   = document.getElementById('pc');
+const bgCanvas  = document.getElementById('bg-canvas');
+const pCtx      = pCanvas.getContext('2d');
+const bCtx      = bgCanvas.getContext('2d');
+const addrIn    = document.getElementById('addr-in');
+
+AGENTS.forEach(a => {
+  const d = document.createElement('div');
+  d.className = 'acard' + (a.isHuman ? ' human' : '');
+  d.id = `card-${a.id}`;
+  d.style.setProperty('--agent-color', a.color);
+  d.dataset.id = a.id;
+  d.innerHTML = `
+    <div class="c-head">
+      <div class="c-name">${a.name}</div>
+      <div class="c-dot" id="dot-${a.id}" style="background:${a.color};box-shadow:0 0 6px ${a.color}55"></div>
+    </div>
+    <div class="c-title">${a.title}</div>
+    <div class="c-sent">
+      <div class="c-emoji" id="em-${a.id}">${a.isHuman ? '👁' : '😐'}</div>
+      <div class="c-slabel" id="sl-${a.id}" style="color:${a.isHuman?'#c8a84b':'#3b82f6'}">${a.isHuman?'MONITORING':'NOMINAL'}</div>
+    </div>
+    <div class="c-bar"><div class="c-bar-fill" id="bar-${a.id}" style="width:50%;background:${a.isHuman?'#c8a84b':'#3b82f6'}"></div></div>
+  `;
+  d.addEventListener('click', () => focusCard(a.id));
+  agWrap.appendChild(d);
+});
+
+// ── LAYOUT ────────────────────────────────────────────────────────────────────
+let agentPositions = [];
+function layout() {
+  const W = tblArea.clientWidth, H = tblArea.clientHeight;
+  const cx = W/2, cy = H/2;
+  const rx = Math.min(W*.42, 470);
+  const ry = Math.min(H*.41, 228);
+  const tW  = Math.min(rx*1.28, 580);
+  const tH  = Math.min(ry*1.18, 300);
+  ovalTbl.style.width  = tW + 'px';
+  ovalTbl.style.height = tH + 'px';
+  const tMark = ovalTbl.querySelector('.tbl-mark');
+  tMark.style.fontSize = Math.max(9, tW/55) + 'px';
+
+  agentPositions = [];
+  const n = AGENTS.length;
+  AGENTS.forEach((a, i) => {
+    const angle = (i/n)*Math.PI*2 - Math.PI/2;
+    const x = cx + rx*Math.cos(angle);
+    const y = cy + ry*Math.sin(angle);
+    const card = document.getElementById(`card-${a.id}`);
+    card.style.left = x + 'px';
+    card.style.top  = y + 'px';
+    a._x = x; a._y = y;
+    agentPositions.push({x, y, color: a.color, id: a.id});
+  });
+}
+
+// ── PARTICLES ─────────────────────────────────────────────────────────────────
+let particles = [], pw, ph;
+class P {
+  constructor(){this.r();}
+  r(){this.x=Math.random()*pw;this.y=Math.random()*ph;this.vx=(Math.random()-.5)*.35;this.vy=(Math.random()-.5)*.35;this.s=Math.random()*1.2+.4;this.a=Math.random()*.35+.08;}
+  u(){this.x+=this.vx;this.y+=this.vy;if(this.x<0)this.x=pw;if(this.x>pw)this.x=0;if(this.y<0)this.y=ph;if(this.y>ph)this.y=0;}
+  d(){pCtx.beginPath();pCtx.arc(this.x,this.y,this.s,0,Math.PI*2);pCtx.fillStyle=`rgba(200,168,75,${this.a})`;pCtx.fill();}
+}
+function initP(){particles=Array.from({length:55},()=>new P());}
+
+let globalMood = 0.5;
+function drawP(){
+  pCtx.clearRect(0,0,pw,ph);
+  const gc = globalMood;
+  const lc = gc>.65?'74,222,128':gc<.35?'248,113,113':'200,168,75';
+  // inter-agent lines
+  for(let i=0;i<AGENTS.length;i++){
+    for(let j=i+1;j<AGENTS.length;j++){
+      const a=AGENTS[i],b=AGENTS[j];
+      if(!a._x||!b._x)continue;
+      const dx=a._x-b._x,dy=a._y-b._y,dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist>380)continue;
+      const al=(1-dist/380)*.14;
+      pCtx.beginPath();pCtx.moveTo(a._x,a._y);pCtx.lineTo(b._x,b._y);
+      pCtx.strokeStyle=`rgba(${lc},${al})`;pCtx.lineWidth=.5;pCtx.stroke();
+    }
+  }
+  // floating particles
+  particles.forEach(p=>{
+    p.u();p.d();
+    for(const a of AGENTS){
+      if(!a._x)continue;
+      const dx=p.x-a._x,dy=p.y-a._y,dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<90){
+        pCtx.beginPath();pCtx.moveTo(p.x,p.y);pCtx.lineTo(a._x,a._y);
+        pCtx.strokeStyle=`rgba(${lc},${(1-dist/90)*.08})`;pCtx.lineWidth=.3;pCtx.stroke();
+      }
+    }
+  });
+}
+
+// ── BACKGROUND ────────────────────────────────────────────────────────────────
+function drawBg(w,h){
+  bCtx.fillStyle='#06060b';bCtx.fillRect(0,0,w,h);
+  bCtx.strokeStyle='rgba(200,168,75,.025)';bCtx.lineWidth=1;
+  const g=64;
+  for(let x=0;x<w;x+=g){bCtx.beginPath();bCtx.moveTo(x,0);bCtx.lineTo(x,h);bCtx.stroke();}
+  for(let y=0;y<h;y+=g){bCtx.beginPath();bCtx.moveTo(0,y);bCtx.lineTo(w,y);bCtx.stroke();}
+  const gr=bCtx.createRadialGradient(w/2,h/2,0,w/2,h/2,Math.max(w,h)*.45);
+  gr.addColorStop(0,'rgba(200,168,75,.05)');gr.addColorStop(1,'rgba(0,0,0,0)');
+  bCtx.fillStyle=gr;bCtx.fillRect(0,0,w,h);
+}
+
+// ── SENTIMENT ─────────────────────────────────────────────────────────────────
+function scoreAgent(text,agent){
+  if(agent.isHuman)return.5;
+  const t=text.toLowerCase();let s=.5;
+  agent.kw.p.forEach(k=>{if(t.includes(k))s+=.1;});
+  agent.kw.n.forEach(k=>{if(t.includes(k))s-=.1;});
+  return Math.max(0,Math.min(1,s));
+}
+function scoreToState(s){
+  if(s>.75)return'OPTIMISTIC';
+  if(s>.58)return'NOMINAL';
+  if(s<.22)return'CRITICAL';
+  if(s<.38)return'ALERT';
+  return'NOMINAL';
+}
+function setCard(agent,score,stName){
+  const st=STATES[stName];
+  const em=document.getElementById(`em-${agent.id}`);
+  const sl=document.getElementById(`sl-${agent.id}`);
+  const br=document.getElementById(`bar-${agent.id}`);
+  const dt=document.getElementById(`dot-${agent.id}`);
+  if(em.textContent!==st.emoji){
+    em.textContent=st.emoji;
+    em.classList.remove('pop');void em.offsetWidth;em.classList.add('pop');
+  }
+  sl.textContent=st.label;sl.style.color=st.color;
+  br.style.width=`${score*100}%`;br.style.backgroundColor=st.color;
+  dt.style.background=st.color;dt.style.boxShadow=`0 0 7px ${st.color}55`;
+}
+
+function processBoard(text){
+  let totalScore=0,count=0;
+  AGENTS.forEach(a=>{
+    if(a.isHuman){setCard(a,.85,'PRESIDING');return;}
+    const s=scoreAgent(text,a);
+    const sn=scoreToState(s);
+    setCard(a,s,sn);
+    totalScore+=s;count++;
+  });
+  globalMood=count>0?totalScore/count:.5;
+}
+
+// ── INPUTS ────────────────────────────────────────────────────────────────────
+addrIn.addEventListener('input',()=>{
+  if(addrIn.value.length>1)processBoard(addrIn.value);
+});
+document.getElementById('btn-send').addEventListener('click',()=>{
+  const v=addrIn.value.trim();
+  if(!v)return;
+  processBoard(v);addrIn.value='';
+  setTimeout(()=>{
+    AGENTS.forEach(a=>{setCard(a,.5,a.isHuman?'WAITING':'NOMINAL');});
+    globalMood=.5;
+  },3500);
+});
+addrIn.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-send').click();});
+
+// ── CONVENE ───────────────────────────────────────────────────────────────────
+let convening=false;
+document.getElementById('btn-cnv').addEventListener('click',()=>{
+  if(convening)return;
+  convening=true;
+  const btn=document.getElementById('btn-cnv');
+  btn.disabled=true;btn.textContent='CONVENING...';
+  AGENTS.forEach((a,i)=>{
+    if(a.isHuman)return;
+    setTimeout(()=>{
+      const card=document.getElementById(`card-${a.id}`);
+      card.classList.add('convening');
+      setCard(a,.3,'PROCESSING');
+      setTimeout(()=>{
+        card.classList.remove('convening');
+        const fs=Math.max(0,Math.min(1,.45+Math.random()*.55));
+        setCard(a,fs,scoreToState(fs));
+        globalMood=(.5+Math.random()*.3);
+      },500+Math.random()*500);
+    },i*120);
+  });
+  setTimeout(()=>{
+    setCard(AGENTS[0],.95,'PRESIDING');
+  },2000);
+  setTimeout(()=>{
+    btn.disabled=false;btn.textContent='CONVENE SESSION';convening=false;
+  },3200);
+});
+
+// ── FOCUS ─────────────────────────────────────────────────────────────────────
+let focused=null;
+function focusCard(id){
+  if(focused===id){document.getElementById(`card-${id}`)?.classList.remove('focused');focused=null;return;}
+  if(focused)document.getElementById(`card-${focused}`)?.classList.remove('focused');
+  document.getElementById(`card-${id}`)?.classList.add('focused');focused=id;
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+function tick(){
+  const now=new Date();
+  document.getElementById('clock-el').textContent=
+    [now.getHours(),now.getMinutes(),now.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+}
+setInterval(tick,1000);tick();
+
+// ── RESIZE & LOOP ─────────────────────────────────────────────────────────────
+function resize(){
+  const bw=window.innerWidth,bh=window.innerHeight;
+  bgCanvas.width=bw;bgCanvas.height=bh;drawBg(bw,bh);
+  pw=tblArea.clientWidth;ph=tblArea.clientHeight;
+  pCanvas.width=pw;pCanvas.height=ph;
+  layout();initP();
+}
+function loop(){drawP();requestAnimationFrame(loop);}
+window.addEventListener('resize',resize);
+resize();loop();
+
+// ── IDLE BREATH ───────────────────────────────────────────────────────────────
+// Subtle random state flickers to keep the board alive
+setInterval(()=>{
+  if(convening||addrIn.value.length>0)return;
+  const nonHuman=AGENTS.filter(a=>!a.isHuman);
+  const pick=nonHuman[Math.floor(Math.random()*nonHuman.length)];
+  const cur=agSt[pick.id]?.state||'NOMINAL';
+  const flicker=['NOMINAL','NOMINAL','NOMINAL','PROCESSING','IDLE'];
+  const next=flicker[Math.floor(Math.random()*flicker.length)];
+  if(next!==cur){
+    setCard(pick,.5,next);
+    setTimeout(()=>setCard(pick,.5,'NOMINAL'),1800+Math.random()*1200);
+  }
+},4000);
+
+// Welcome
+setTimeout(()=>{
+  addrIn.placeholder='address the board, or click CONVENE SESSION to open proceedings...';
+  setCard(AGENTS[0],.9,'WAITING');
+},1200);
+</script>
+</body>
+</html>
