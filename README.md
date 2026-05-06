@@ -4,11 +4,15 @@ An immersive, spatial governance dashboard built for the next generation of boar
 
 ## 👁️ Visual Demo
 
-### 3D Council Arc (Priority Focus)
-![Boardroom 3D Demo](clips/boardroom-demo.gif)
-
 ### 2D Interactive Dashboard
 ![2D Dashboard Demo](clips/green-dot-blinkin.gif)
+
+Claude was eager to give me basic 2D needs..
+
+### 3D Council Arc (Priority Focus)
+![Boardroom 3D Demo](clips/boardroom-demo.gif)
+ 
+but I sm here to improve those feats..
 
 ## 🎯 Vision
 
@@ -27,6 +31,9 @@ While we maintain a high-fidelity 2D interface, our priority is the **3D Council
 - **Reporting:** Telegram/IRC/Nostr Integrations (Scheduled)
 
 ## 📅 Roadmap
+
+- [ ] deploy to github pages
+	- [ ] verify deployment of 2d & 3d pages
 
 - [ ] Integrate Zeroclaw agent for daily reporting cron jobs.
 - [ ] Research `xrblocks` for enhanced spatial fidelity.

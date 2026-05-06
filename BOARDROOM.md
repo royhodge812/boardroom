@@ -1,13 +1,13 @@
 ---
 title: Digital Boardroom
-version: 1.0
+version: 0.0.1
 owner: Roy
 last_report: 2026-05-06T08:00:00
-report_channel: telegram
+report_channel: github-pages
 schema: frontmatter+tasklist
 ---
 
-# 🗂️ DIGITAL BOARDROOM
+# 🗂️ DIGITAL BOARDROOM MD
 > Live operational view — Pending and In-Progress only.
 > Resolved items are archived automatically. See `## ARCHIVE` below.
 
